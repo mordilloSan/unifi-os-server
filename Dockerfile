@@ -1,6 +1,6 @@
-FROM ghcr.io/lemker/uosserver:c9603dec9010-multiarch
+FROM ghcr.io/mordillosan/uosserver:c9603dec9010-multiarch
 
-LABEL org.opencontainers.image.source="https://github.com/lemker/unifi-os-server"
+LABEL org.opencontainers.image.source="https://github.com/mordilloSan/unifi-os-server"
 
 ENV container="docker"
 ENV APP_VERSION="5.1.42"

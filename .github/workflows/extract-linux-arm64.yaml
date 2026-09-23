@@ -21,7 +21,7 @@ env:
   REGISTRY_USER: ${{ github.actor }}
   REGISTRY_PASSWORD: ${{ github.token }}
   REGISTRY: ghcr.io
-  REPO_OWNER: ${{ github.repository_owner }}
+  REPO_OWNER: mordillosan
 
 jobs:
   extract-image:

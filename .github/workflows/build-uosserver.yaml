@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  REPO_OWNER: ${{ github.repository_owner }}
+  REPO_OWNER: mordillosan
   IMAGE_NAME: uosserver
 
 jobs:
