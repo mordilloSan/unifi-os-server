@@ -59,24 +59,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check if pull request already exists
+      - name: Check if version is already handled
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
+          CURRENT_VERSION=$(sed -n 's/^ENV APP_VERSION="\(.*\)"$/\1/p' Dockerfile)
           pr_count=$(gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
             --head "updates-unifi-core-${{ env.UOS_VERSION }}" \
             --state all \
             --json number \
             --jq 'length')
-          if [ "${pr_count}" -gt 0 ]; then
-            echo "APP_VERSION ${{ env.UOS_VERSION }} already exists!"
+
+          if [ "${CURRENT_VERSION}" = "${{ env.UOS_VERSION }}" ] || [ "${pr_count}" -gt 0 ]; then
+            echo "APP_VERSION ${{ env.UOS_VERSION }} already handled (Dockerfile: ${CURRENT_VERSION}, PRs: ${pr_count})"
             echo "released=true" >> "$GITHUB_OUTPUT"
           else
-            echo "APP_VERSION ${{ env.UOS_VERSION }} does not exist!"
+            echo "New version: ${CURRENT_VERSION} -> ${{ env.UOS_VERSION }}"
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
         
