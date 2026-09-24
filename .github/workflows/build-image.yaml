@@ -42,10 +42,15 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Releases are tagged v<UniFi OS Server version>-<image revision>, e.g. v5.1.42-1, which
+          # metadata-action's semver type would treat as a pre-release (no latest, no v5.1.42). So:
+          #   v5.1.42-1  exact build          v5.1.42  newest build of that UniFi version
+          #   v5.1       newest of the line   latest   newest release (auto for tag and match)
+          # Pushes to other branches publish a tag named after the branch.
           tags: |
-            type=semver,pattern={{version}},prefix=v
-            type=semver,pattern={{major}}.{{minor}},prefix=v
-            type=semver,pattern={{major}},prefix=v
+            type=ref,event=tag
+            type=match,pattern=^(v\d+\.\d+\.\d+)-\d+$,group=1
+            type=match,pattern=^(v\d+\.\d+)\.\d+-\d+$,group=1
             type=ref,event=branch
           flavor: |
             latest=auto

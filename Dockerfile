@@ -16,5 +16,12 @@ RUN ["chmod", "+x", "/root/uos-entrypoint.sh", "/root/uos-healthcheck.sh", "/roo
 # Application logs go into the journal; with tty: true the journal is streamed to docker logs. No login prompt.
 RUN systemctl enable uos-console-journal.service uos-journal-pump@unifi-core.service uos-journal-pump@unifi.service uos-journal-pump@postgres.service \
     && systemctl mask console-getty.service
+# UniFi's own install runs uos-discovery-client on the host and points unifi-core at it through
+# host.docker.internal. Here the client runs inside the container, on 127.0.0.1:11002, so point
+# unifi-core there (this is what the app's default.yaml already says). grep fails the build if
+# UniFi changes the file so the drift is noticed.
+RUN sed -i 's|host\.docker\.internal:11002|127.0.0.1:11002|g' /etc/default/unifi-core_advanced* \
+    && grep -q '127.0.0.1:11002' /etc/default/unifi-core_advanced
+
 ENTRYPOINT ["/root/uos-entrypoint.sh"]
 HEALTHCHECK --interval=60s --timeout=15s --start-period=5m --retries=3 CMD ["/root/uos-healthcheck.sh"]
