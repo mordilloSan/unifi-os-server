@@ -1,7 +1,6 @@
 # UniFi OS Server
 
-<a href="https://github.com/lemker/unifi-os-server/pkgs/container/unifi-os-server"><img src="https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fgithub.com%2Flemker%2Funifi-os-server%2Fpkgs%2Fcontainer%2Funifi-os-server&search=(%3Fs)%3Cspan%5B%5E%3E%5D*%3E%5Cs*Total%5Cs%2Bdownloads%5Cs*%3C%2Fspan%3E.*%3F%3Ch3%5B%5E%3E%5D*%3E%5Cs*(%5B0-9%5D%5B0-9.%2C%5D*%5Cs*%5BKM%5D%3F)%5Cs*%3C%2Fh3%3E&replace=%241&logo=github&label=Downloads&cacheSeconds=3600"></a>
-<a href="https://github.com/lemker/unifi-os-server/actions/workflows/build-image.yaml"><img src="https://img.shields.io/github/actions/workflow/status/lemker/unifi-os-server/build-image.yaml?logo=githubactions&logoColor=white&label=Actions"></a>
+<a href="https://github.com/mordilloSan/unifi-os-server/actions/workflows/build-image.yaml"><img src="https://img.shields.io/github/actions/workflow/status/mordilloSan/unifi-os-server/build-image.yaml?logo=githubactions&logoColor=white&label=Actions"></a>
 
 Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) directly in Docker or Kubernetes.
 
@@ -13,11 +12,11 @@ Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) d
 
 ## Docker Compose
 
-See [docker-compose.yaml](https://github.com/lemker/unifi-os-server/blob/main/docker-compose.yaml)
+See [docker-compose.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.yaml)
 
 ## Kubernetes
 
-See [kubernetes](https://github.com/lemker/unifi-os-server/tree/main/kubernetes)
+See [kubernetes](https://github.com/mordilloSan/unifi-os-server/tree/main/kubernetes)
 
 Deployment example uses [ingress-nginx](https://github.com/kubernetes/ingress-nginx) for the ingress and [longhorn](https://github.com/longhorn/longhorn) for storage.
 
@@ -49,6 +48,9 @@ udp:
 |----|----|
 | UOS_SYSTEM_IP | Hostname or IP for UniFi OS Server |
 | HARDWARE_PLATFORM | Manually set hardware platform |
+| UOS_LOG_TIMESTAMP | `docker logs`: prefix lines with the time (default `true`) |
+| UOS_LOG_SOURCE | `docker logs`: prefix lines with the source, e.g. `unifi-core:` (default `true`) |
+| UOS_LOG_COLOR | `docker logs`: color the `[ WARN ]` level tag (default `true`) |
 
 ### UOS_SYSTEM_IP
 
@@ -92,4 +94,16 @@ The `uosserver` image is provided by UniFi, extracted from the installation bina
 
 ## Why does the container need specific settings for cgroup and tmpfs?
 
-The underlying structure of UniFi OS Server runs every component as systemd services which requires access to the host `cgroup`.
+The underlying structure of UniFi OS Server runs every component as systemd services which requires access to the host `cgroup`. The entrypoint prints a `WARNING` in the container logs when one of the tmpfs mounts is missing or mounted `noexec`.
+
+## Why is the container unhealthy?
+
+The UniFi OS (`system.log`, `errors.log`), Network application (`server.log`) and PostgreSQL logs are copied into the journal under the identifiers `unifi-core`, `unifi` and `postgres`, so `docker exec unifi-os-server journalctl -f -t unifi` works. With `tty: true` (see [docker-compose.yaml](docker-compose.yaml)) `docker logs` shows the systemd boot status followed by the journal at notice level and up, those application logs plus systemd warnings and errors, as `2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces`. The `UOS_LOG_*` variables switch the time, the source and the colors off. The `logging` section of the compose file caps that at three 10 MB files. The healthcheck reports failed systemd units, whether UniFi OS answers on `/api/ping` and the state of the main services:
+
+```bash
+docker inspect --format '{{json .State.Health.Log}}' unifi-os-server | jq -r '.[-1].Output'
+```
+
+## The services fail with permission errors on my volumes
+
+The entrypoint fixes the ownership of the MongoDB, PostgreSQL, RabbitMQ and UniFi agent directories on every start and logs what it changed, so restart the container and check `docker logs`.

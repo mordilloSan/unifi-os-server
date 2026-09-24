@@ -1,0 +1,17 @@
+# Streams the journal (systemd warnings and errors plus the pumped application logs) to the
+# console. With tty: true the console is docker logs. Options: UOS_LOG_* (see README).
+[Unit]
+Description=Stream the journal to the console
+ConditionPathExists=/dev/console
+After=systemd-journald.service
+
+[Service]
+EnvironmentFile=-/etc/default/uos-log
+ExecStart=/root/uos-console-journal.py
+StandardOutput=tty
+TTYPath=/dev/console
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

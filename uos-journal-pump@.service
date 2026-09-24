@@ -1,0 +1,16 @@
+# Pumps an application log source (unifi-core, unifi or postgres, the instance name) into the
+# journal so that journalctl and the console show every source in one format.
+[Unit]
+Description=Pump %i logs into the journal
+After=unifi-core.service
+
+[Service]
+ExecStart=/root/uos-journal-pump.sh %i
+SyslogIdentifier=%i
+# notice: passes the console unit's filter, which otherwise only lets systemd warnings and errors through
+SyslogLevel=notice
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
