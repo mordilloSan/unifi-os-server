@@ -1,0 +1,7 @@
+# Host network override: the container shares the host's network stack, so UniFi sees your LAN.
+# Read "Network mode" in the README first: every port the container opens is opened on the host.
+#   docker compose -f docker-compose.yaml -f docker-compose.host.yaml up -d
+services:
+  unifi-os-server:
+    network_mode: host
+    ports: !reset []
