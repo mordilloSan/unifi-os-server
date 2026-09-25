@@ -43,10 +43,7 @@ else
     exit 1
 fi
 
-log INFO "Setting FIRMWARE_PLATFORM to $FIRMWARE_PLATFORM"
-log INFO "Setting PRODUCT_NAME to $PRODUCT_NAME"
-log INFO "Setting APP_MODEL to $APP_MODEL"
-log INFO "Setting APP_VERSION to $APP_VERSION"
+log INFO "$PRODUCT_NAME $APP_VERSION ($FIRMWARE_PLATFORM), system IP ${UOS_SYSTEM_IP:-not set}"
 
 # Read version from package.json and write version string
 echo "$FIRMWARE_PLATFORM" > /usr/lib/platform
@@ -141,7 +138,6 @@ fi
 # Set UOS_SYSTEM_IP
 UNIFI_SYSTEM_PROPERTIES="/var/lib/unifi/system.properties"
 if [ -n "${UOS_SYSTEM_IP+1}" ]; then
-    log INFO "Setting UOS_SYSTEM_IP to $UOS_SYSTEM_IP"
     if [ ! -f "$UNIFI_SYSTEM_PROPERTIES" ]; then
         echo "system_ip=$UOS_SYSTEM_IP" >> "$UNIFI_SYSTEM_PROPERTIES"
     else
@@ -151,13 +147,6 @@ if [ -n "${UOS_SYSTEM_IP+1}" ]; then
             echo "system_ip=$UOS_SYSTEM_IP" >> "$UNIFI_SYSTEM_PROPERTIES"
         fi
     fi
-fi
-
-# Where unifi-core finds the discovery client. The image points it at the client inside the
-# container; the bridge compose file points it at the sidecar on the host network (README, Networking).
-if [ -n "${UOS_DISCOVERY_CLIENT_URL:-}" ]; then
-    log INFO "Setting discovery client URL to $UOS_DISCOVERY_CLIENT_URL"
-    sed -i "s|\"discoveryClientUrl\":\"[^\"]*\"|\"discoveryClientUrl\":\"$UOS_DISCOVERY_CLIENT_URL\"|" /etc/default/unifi-core_advanced*
 fi
 
 # systemd needs /run on tmpfs and UniFi needs exec on /run and /tmp; an unprivileged container

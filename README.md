@@ -12,7 +12,7 @@ Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) d
 
 ## Docker Compose
 
-See [docker-compose.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.yaml) for the bridge network with device discovery, or [docker-compose.host.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.host.yaml) for the host network. [Networking](#networking) explains the difference.
+Two complete files, pick one: [docker-compose.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.yaml) gives the container its own address on your LAN (macvlan) plus a bridge network, [docker-compose.host.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.host.yaml) puts it on the host network. [Networking](#networking) explains the difference.
 
 ## Kubernetes
 
@@ -59,7 +59,6 @@ Releases are named after the UniFi OS Server version they ship plus an image rev
 |----|----|
 | UOS_SYSTEM_IP | Hostname or IP for UniFi OS Server |
 | HARDWARE_PLATFORM | Manually set hardware platform |
-| UOS_DISCOVERY_CLIENT_URL | Where UniFi OS finds the discovery client. Default `http://127.0.0.1:11002`, the client inside the container; the bridge compose file sets `http://host.docker.internal:11002` for its `discovery` sidecar |
 | UOS_LOG_LEVEL | `docker logs`: lowest journal priority shown. Default `notice`: warnings, errors and systemd state changes, minus the known startup noise listed in the FAQ. `info` adds everything the applications log, noise included |
 | UOS_LOG_TIMESTAMP | `docker logs`: prefix lines with the time (default `true`) |
 | UOS_LOG_SOURCE | `docker logs`: prefix lines with the source, e.g. `unifi-core:` (default `true`) |
@@ -101,74 +100,42 @@ Overrides your detected hardware platform. Accepted values are: `synology`.
 
 # Networking
 
-Two ways to run it, one compose file each:
+UniFi needs the container on your LAN: devices announce themselves by broadcast, the console scans for them by broadcast, and both stop at Docker's NAT. So neither compose file uses Docker's default bridge with published ports. Pick one:
 
-- [docker-compose.yaml](docker-compose.yaml): the container on Docker's bridge network with the ports above published, plus a second small container, `discovery`, that runs UniFi's discovery client on the host network. This is the default and works on any Docker host.
-- [docker-compose.host.yaml](docker-compose.host.yaml): the container itself on the host network. No port mapping and no sidecar, but every port the container opens becomes a host port.
+| | `docker-compose.yaml`: macvlan + bridge | `docker-compose.host.yaml`: host network |
+|----|----|----|
+| The container is | a machine on your LAN with its own address | the host itself |
+| Web UI | `https://<container address>` | `https://<host>` |
+| Devices adopt by themselves, *Discover devices* in the UI | Yes | Yes |
+| Open on the LAN | the container's ports, on its own address | every port the container opens, on every host interface |
+| The host can reach the container | over the bridge network, by name or bridge address | yes |
+| Other containers can reach it | on the bridge network, by name | on the host's address |
+| Needs | a free LAN address, a NIC that accepts promiscuous mode | free host ports: 80, 443, 8080 and the rest |
 
-| | Bridge with the `discovery` sidecar | Bridge without it | Host network |
-|----|----|----|----|
-| Web UI | `https://<host>:11443` | `https://<host>:11443` | `https://<host>`, the container's 443 |
-| Adoption with `set-inform`, DHCP option 43 or a DNS record named `unifi` | Yes | Yes | Yes |
-| Devices found by their own L2 broadcast | Yes | No | Yes |
-| *Discover devices* scan in the UI | Yes | No, the scan returns nothing | Yes |
-| LAN IP the console reports | a host address, see below | the container's, `172.x.x.x` | a host address, see below |
-| Open on the host | the published ports, plus 10001/udp and `172.17.0.1:11002` from the sidecar | the published ports | every port the container opens |
+Both work because the discovery client, which UniFi's installer runs on the host, runs inside this image and is what UniFi OS talks to. On the LAN it sees your devices; on Docker's default bridge it would only see Docker's network.
 
-## How UniFi does it, and how this image does it
+## macvlan + bridge
 
-UniFi's own installer runs `uos-discovery-client` on the host, outside the container. That client listens on UDP 10001 for the broadcasts UniFi devices send, proxies them into the container on UDP 10003, runs the *Discover devices* scan on the LAN, and tells UniFi OS which network interfaces the host has. UniFi OS reaches it at `host.docker.internal:11002`. In Docker nobody ran that client on the host, so in every Docker deployment the scan failed and UniFi OS logged `Failed to fetch network interfaces from discovery agent` every 3 seconds.
+[docker-compose.yaml](docker-compose.yaml) has three values to fill in: the container's LAN address, used twice, the host interface on the LAN, and your subnet and gateway. Reserve the address in your DHCP server.
 
-This image ships the same client inside the container and points UniFi OS at it by default, `127.0.0.1:11002`. Inside the bridge network the client only sees Docker's network, so scans return nothing and no device broadcast reaches it, but nothing fails. The `discovery` service in the compose file is that same client started on the host network, which is exactly UniFi's layout, and `UOS_DISCOVERY_CLIENT_URL` tells UniFi OS to use it instead. Remove the service and the variable together if you do not want it.
-
-What the sidecar does on the host:
-
-- Listens on UDP 10001 for device broadcasts and proxies them to `172.17.0.1:10003`, which Docker forwards to the main container's published 10003. Nothing else may use 10001/udp on the host.
-- Serves its API on TCP `172.17.0.1:11002`, the `docker0` address, so containers and the host can reach it and the LAN cannot. `172.17.0.1` is Docker's default; if `ip -4 addr show docker0` says otherwise, change both variables of the service.
-- Logs to `/tmp/uos-discovery-client.log` inside its container: `docker exec unifi-os-server-discovery cat /tmp/uos-discovery-client.log`.
-
-About the LAN IP: UniFi OS takes the first interface with an IPv4 address from the list, in alphabetical order, so on a Docker host it is often a bridge such as `br-…` or `docker0` rather than your NIC. UniFi OS Server only uses that address to identify itself to other consoles in a console group. Adoption, STUN and Remote Management do not use it, and Direct Remote Connection is a gateway feature that UniFi OS Server does not have.
+- On the LAN the container answers directly: UI on 443, informs on 8080, STUN on 3478. Nothing is published. Uncomment the `ports` block to also reach the UI through the host's address on 11443.
+- The bridge network, `default`, is for the host and for other containers on it, such as a reverse proxy pointing at `unifi-os-server:443`. macvlan itself does not let the host talk to the container; the bridge is what makes that possible.
+- `UOS_SYSTEM_IP` must be the container's address, so that devices are told to inform there and not on the bridge address.
+- The host's NIC must accept promiscuous mode. Physical servers do; some hypervisors and NAS units need it enabled.
+- Moving from a bridge deployment: same volumes, new file, and the Network application re-points adopted devices to the new address by itself.
 
 ## Host network
 
-[docker-compose.host.yaml](docker-compose.host.yaml) is a complete compose file; use it instead of `docker-compose.yaml`:
-
-```bash
-docker compose -f docker-compose.host.yaml up -d
-```
-
-Before you do:
+[docker-compose.host.yaml](docker-compose.host.yaml) has no network to configure, but read this first:
 
 - The container opens its ports directly on the host: 80 and 443 for the UI, then 5005, 5671, 6789, 8080, 8444, 8880 to 8882, 9543, 11084, 28082, 3478/udp, 5514/udp, 10001/udp and 10003/udp, plus whatever the installed applications add. Anything else on the host using one of those has to move. `docker exec unifi-os-server ss -tulnp` lists what is open.
 - Services bound to `127.0.0.1` inside the container, PostgreSQL 5432, MongoDB 27117, RabbitMQ 5672, epmd 4369 and the discovery client 11002, now bind the host's loopback. They stay unreachable from the LAN, but they collide with a PostgreSQL or MongoDB already running on the host. snmpd listens on all interfaces on 161/udp with the community `public`, read-only, system group only; in host mode that is reachable from your LAN unless you firewall it.
 - `ports:` and `hostname:` are not usable in this mode, which is why the file has neither.
-- `UOS_SYSTEM_IP` stays the host's address.
+- `UOS_SYSTEM_IP` is the host's address.
 
-## macvlan
+## About the LAN IP UniFi OS reports
 
-macvlan gives the container its own address on your LAN, like a separate machine, and it sees the LAN directly, so it needs neither the port mapping nor the `discovery` sidecar. Starting from `docker-compose.host.yaml`, replace `network_mode: host` with a network of your LAN's details:
-
-```yaml
-services:
-  unifi-os-server:
-    networks:
-      lan:
-        ipv4_address: 192.168.1.50 # a free address on your LAN
-    environment:
-      - UOS_SYSTEM_IP=192.168.1.50
-
-networks:
-  lan:
-    driver: macvlan
-    driver_opts:
-      parent: eth0 # the host interface on your LAN
-    ipam:
-      config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.1
-```
-
-Two limits come from macvlan itself: the host cannot talk to the container over that interface unless you add a macvlan shim interface on the host, and the host's NIC must accept promiscuous mode, which some hypervisors and NAS units block.
+UniFi OS takes the first interface with an IPv4 address from the list, in alphabetical order. With macvlan plus bridge the two interfaces are `eth0` and `eth1` and Docker does not guarantee which network gets which, so the reported address may be the bridge one; on the host network it is often a `br-…` or `docker0` bridge rather than your NIC. UniFi OS Server only uses that address to identify itself to other consoles in a console group. Adoption, STUN and Remote Management do not use it, and Direct Remote Connection is a gateway feature that UniFi OS Server does not have.
 
 # Frequently Asked Questions
 
@@ -178,7 +145,7 @@ The `uosserver` image is UniFi's, extracted from the installation binary. The `u
 
 ## Does automatic device discovery work?
 
-Yes, with the `discovery` sidecar of [docker-compose.yaml](docker-compose.yaml) or on the host network, see [Networking](#networking). Without either, devices have to be told where the controller is: `set-inform` (see `UOS_SYSTEM_IP`), DHCP option 43, or a DNS record named `unifi` pointing at the host, since devices try `http://unifi:8080/inform` on their own.
+Yes, with either compose file, because both put the container on your LAN. See [Networking](#networking). If you run the container on Docker's default bridge with published ports instead, devices have to be told where the controller is: `set-inform` (see `UOS_SYSTEM_IP`), DHCP option 43, or a DNS record named `unifi` pointing at the host, since devices try `http://unifi:8080/inform` on their own.
 
 ## Which errors at startup are normal?
 

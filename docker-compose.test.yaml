@@ -5,6 +5,8 @@ services:
     image: unifi-os-server:test
     build: .
     container_name: uos-test
+    networks: !override
+      default: {}
     hostname: unifi
     environment:
       - UOS_SYSTEM_IP=unifi.example.com
@@ -19,7 +21,6 @@ services:
       - ./.test-data/var-lib-unifi:/var/lib/unifi
       - ./.test-data/var-lib-mongodb:/var/lib/mongodb
       - ./.test-data/etc-rabbitmq-ssl:/etc/rabbitmq/ssl
-  discovery:
-    image: unifi-os-server:test
-    build: .
-    container_name: uos-test-discovery
+
+networks: !override
+  default: {}

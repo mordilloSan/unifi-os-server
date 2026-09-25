@@ -1,6 +1,6 @@
 ---
-# UniFi OS Server on the host network: no port mapping, no discovery sidecar, the container sees your
-# LAN directly. Read "Networking" in the README first: every port the container opens is a host port.
+# UniFi OS Server on the host network: no port mapping, the container sees your LAN directly.
+# Read "Networking" in the README first: every port the container opens is a host port.
 services:
   unifi-os-server:
     image: ghcr.io/mordillosan/unifi-os-server:latest
