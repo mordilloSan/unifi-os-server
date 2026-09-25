@@ -19,10 +19,13 @@ case $1 in
         exit 1
         ;;
 esac
-# Stack frames ("    at ...", "... 13 common frames omitted") and bare "Error:" lines stay in the
-# files but not in the journal: minified frames tell a reader nothing and they drown the message.
+# Kept in the files but out of the journal: stack frames ("    at ...", "... 13 common frames
+# omitted"), the "Error: message" line Node prints under each logged error (it repeats the
+# message), and unifi-core errors without a [module] tag, which come from system.log and are
+# already in errors.log with the tag.
 tail -q -F -n0 "${files[@]}" | sed -u \
     -e "$strip" \
     -e '/^[[:space:]]\+at /d' \
     -e '/^[[:space:]]*\.\.\. [0-9]\+ .*\(omitted\|more\)$/d' \
-    -e '/^Error:[[:space:]]*$/d'
+    -e '/^[A-Za-z]*Error:/d' \
+    -e '/^error: [^[]/d'
