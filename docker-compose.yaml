@@ -1,9 +1,16 @@
 ---
+# UniFi OS Server with its own address on your LAN (macvlan) plus a bridge network for the host and
+# other containers, such as a reverse proxy, to reach it by name. Fill in the three values marked <-.
+# See "Networking" in the README. For the host network instead, use docker-compose.host.yaml.
 services:
   unifi-os-server:
     image: ghcr.io/mordillosan/unifi-os-server:latest
     container_name: unifi-os-server
     tty: true # systemd boot status ([ OK ] / Failed to start) shows up in docker logs
+    networks:
+      lan:
+        ipv4_address: 192.168.1.67 # <- a free address on your LAN, outside the DHCP pool
+      default: {}
     cgroup: host
     cap_add:
       - NET_RAW
@@ -17,55 +24,37 @@ services:
       - /var/lib/journal
       - /var/opt/unifi/tmp:size=64m
     environment:
-      - UOS_SYSTEM_IP=unifi.example.com
-      - UOS_DISCOVERY_CLIENT_URL=http://host.docker.internal:11002 # the discovery sidecar below; remove with it
+      - UOS_SYSTEM_IP=192.168.1.67 # <- the same address: devices send their informs here
       # - UOS_LOG_LEVEL=info      # docker logs: everything the applications log, not only warnings and errors
       # - UOS_LOG_TIMESTAMP=false # docker logs: drop the time
       # - UOS_LOG_SOURCE=false    # docker logs: drop the source (unifi-core:, unifi:, postgres:, systemd:)
       # - UOS_LOG_COLOR=false     # docker logs: no ANSI colors
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-      - ./persistent:/persistent
-      - ./srv:/srv
-      - ./var-log:/var/log
-      - ./data:/data
-      - ./var-lib-unifi:/var/lib/unifi
-      - ./var-lib-mongodb:/var/lib/mongodb
-      - ./rabbitmq-ssl:/etc/rabbitmq/ssl
-    ports:
-      - 11443:443
-      - 5005:5005 # Optional
-      - 9543:9543 # Optional
-      - 6789:6789 # Optional
-      - 8080:8080
-      - 8444:8444 # Optional
-      - 3478:3478/udp
-      - 5514:5514/udp # Optional
-      - 10003:10003/udp
-      - 127.0.0.1:11084:11084 # Optional
-      - 5671:5671 # Optional
-      - 8880:8880 # Optional
-      - 8881:8881 # Optional
-      - 8882:8882 # Optional
+      - /path/to/unifi-os-server/persistent:/persistent
+      - /path/to/unifi-os-server/var-log:/var/log
+      - /path/to/unifi-os-server/data:/data
+      - /path/to/unifi-os-server/srv:/srv
+      - /path/to/unifi-os-server/var-lib-unifi:/var/lib/unifi
+      - /path/to/unifi-os-server/var-lib-mongodb:/var/lib/mongodb
+      - /path/to/unifi-os-server/etc-rabbitmq-ssl:/etc/rabbitmq/ssl
+    # The LAN reaches the container directly on its address; nothing needs publishing. Uncomment to
+    # also reach the UI through the host's address, https://<host>:11443
+    # ports:
+    #   - 11443:443
     restart: unless-stopped
     logging:
       options:
         max-size: 10m
         max-file: "3"
 
-  # UniFi's discovery client on the host network, as in UniFi's own installer: hears device
-  # broadcasts on 10001/udp, proxies them to the main container's 10003/udp, runs the UI scan on
-  # your LAN. 172.17.0.1 is Docker's default bridge address (ip -4 addr show docker0). See README.
-  discovery:
-    image: ghcr.io/mordillosan/unifi-os-server:latest
-    container_name: unifi-os-server-discovery
-    network_mode: host
-    entrypoint: /usr/bin/uos-discovery-client
-    environment:
-      - DISCOVERY_CLIENT_SERVER_HOST=172.17.0.1 # API for UniFi OS, reachable from containers only
-      - DISCOVERY_CLIENT_WSL_MACHINE_IP=172.17.0.1 # where proxied device announcements go: the published 10003
-      - DISCOVERY_CLIENT_LOG_PATH=/tmp
-    healthcheck:
-      disable: true
-    stop_signal: SIGTERM
-    restart: unless-stopped
+networks:
+  lan:
+    driver: macvlan
+    driver_opts:
+      parent: eth0 # <- the host interface on your LAN: ip -4 -br addr
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24 # <- your LAN
+          gateway: 192.168.1.1
+  default: {}
