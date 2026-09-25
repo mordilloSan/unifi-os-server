@@ -24,8 +24,19 @@ TIMESTAMP, SOURCE, COLOR = enabled("UOS_LOG_TIMESTAMP"), enabled("UOS_LOG_SOURCE
 LEVEL = os.environ.get("UOS_LOG_LEVEL", "notice").lower()
 if LEVEL not in ("emerg", "alert", "crit", "err", "warning", "notice", "info", "debug", *"01234567"):
     LEVEL = "notice"
-# systemd bookkeeping that carries no information for a container
-NOISE_RE = re.compile(r": Consumed [0-9.]+m?s CPU time\.?$")
+# Logged on every boot in a container and carrying no information (README, "Which errors at startup
+# are normal?"). Dropped from the console stream unless UOS_LOG_LEVEL asks for info or debug; the
+# journal and the log files keep them.
+NOISE_RE = re.compile("|".join([
+    r": Consumed [0-9.]+m?s CPU time\.?$",                          # systemd bookkeeping
+    r"initialization took [0-9]+ms$",                                # Spring Boot startup timing
+    r"Application degradation: .* not supported$",                  # hardware monitoring, absent here
+    r"MessageBox: Invalid token$",                                   # stale token, reconnects 10 s later
+    r"Connection to MessageBox closed",
+    r"Failed to retrieve anonymous network application ID",         # every boot, nothing waits on it
+    r"Cannot publish s2s-vpn-sites request - sites list is empty",  # no SD-WAN sites
+]))
+QUIET = LEVEL not in ("info", "debug", "6", "7")
 
 # Level word at the start of a message, "word:" in any case or an UPPERCASE word:
 # unifi-core "warn: ...", Network app "<thread> WARN  logger - ...", PostgreSQL "[pid] LOG:  ...".
@@ -71,7 +82,7 @@ def main():
         stdout=subprocess.PIPE, text=True)
     for line in journal.stdout:
         entry = json.loads(line)
-        if isinstance(entry.get("MESSAGE"), str) and NOISE_RE.search(entry["MESSAGE"]):
+        if QUIET and isinstance(entry.get("MESSAGE"), str) and NOISE_RE.search(entry["MESSAGE"]):
             continue
         print(format_entry(entry), flush=True)
 
