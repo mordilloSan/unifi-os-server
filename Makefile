@@ -12,19 +12,19 @@ lint:
 	python3 -c "compile(open('uos-console-journal.py').read(), 'uos-console-journal.py', 'exec')"
 	$(COMPOSE) config -q
 
-# Build, boot on ./.test-data (created as your user, so the ownership fix has work to do), follow
-# docker logs live until the healthcheck settles, then show what is not active and the health result.
+# Build, boot on ./.test-data (created as your user, so the ownership fix has work to do) and follow
+# docker logs until Ctrl+C. The healthcheck result is printed into the stream once it settles.
+# The containers keep running afterwards: make clean stops them.
 test:
 	mkdir -p $(addprefix .test-data/,$(VOLUMES))
 	$(COMPOSE) up -d --build
-	@echo "--- docker logs, live until the healthcheck settles (start-period is 5m) ---"
-	@docker logs -f $(NAME) & pid=$$!; \
-	for i in $$(seq 1 120); do \
+	@echo "--- docker logs, live; healthcheck result follows once it settles (start-period is 5m); Ctrl+C to stop ---"
+	@( for i in $$(seq 1 120); do \
 		[ "$$(docker inspect -f '{{.State.Health.Status}}' $(NAME))" = starting ] || break; \
 		sleep 5; \
-	done; kill $$pid
-	@docker inspect $(NAME) | jq -r "$$HEALTH_JQ"
-	@[ "$$(docker inspect -f '{{.State.Health.Status}}' $(NAME))" = healthy ]
+	done; docker inspect $(NAME) | jq -r "$$HEALTH_JQ" ) & watch=$$!; \
+	trap 'kill $$watch 2>/dev/null' EXIT INT TERM; \
+	docker logs -f $(NAME)
 
 # Remove the test container and its network. distclean also wipes ./.test-data, whose files are
 # root-owned, so the rm runs in a container.
