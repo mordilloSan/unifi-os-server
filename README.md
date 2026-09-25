@@ -127,7 +127,7 @@ docker compose -f docker-compose.yaml -f docker-compose.host.yaml up -d
 Before you do:
 
 - The container opens its ports directly on the host: 80 and 443 for the UI, then 5005, 5671, 6789, 8080, 8444, 8880 to 8882, 9543, 11084, 28082, 3478/udp, 5514/udp and 10003/udp from the table above, plus whatever the installed applications add. Anything else on the host using one of those has to move. `docker exec unifi-os-server ss -tulnp` lists what is open.
-- Services bound to `127.0.0.1` inside the container, PostgreSQL 5432, MongoDB 27117, RabbitMQ 5672, epmd 4369, SNMP 161 and the discovery client 11002, now bind the host's loopback. They stay unreachable from the LAN, but they collide with a PostgreSQL or MongoDB already running on the host.
+- Services bound to `127.0.0.1` inside the container, PostgreSQL 5432, MongoDB 27117, RabbitMQ 5672, epmd 4369 and the discovery client 11002, now bind the host's loopback. They stay unreachable from the LAN, but they collide with a PostgreSQL or MongoDB already running on the host. snmpd listens on all interfaces on 161/udp with the community `public`, read-only, system group only; in host mode that is reachable from your LAN unless you firewall it.
 - `ports:` is ignored in this mode, the override clears it, and `hostname:` is not allowed.
 - `UOS_SYSTEM_IP` stays the host's address.
 
