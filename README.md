@@ -179,6 +179,15 @@ The `uosserver` image is UniFi's, extracted from the installation binary. The `u
 
 Yes, with the `discovery` sidecar of [docker-compose.yaml](docker-compose.yaml) or on the host network, see [Networking](#networking). Without either, devices have to be told where the controller is: `set-inform` (see `UOS_SYSTEM_IP`), DHCP option 43, or a DNS record named `unifi` pointing at the host, since devices try `http://unifi:8080/inform` on their own.
 
+## Which errors at startup are normal?
+
+Every boot logs a few errors that come from UniFi's own components and fix themselves:
+
+- `MessageBox: Invalid token` from unifi-core, and `Connection to MessageBox closed` from the Network application. The Network application reconnects with a stale token from the previous boot, is refused, and subscribes again 10 seconds later.
+- `Failed to retrieve anonymous network application ID` from unifi-core, after six retries. An internal call for the diagnostics ID that fails on every boot; nothing waits on it.
+- `Cannot publish s2s-vpn-sites request - sites list is empty` and the two `Application degradation` warnings from the Network application. SD-WAN sites you do not have and hardware monitoring that does not exist in a container.
+- Until the console is linked to a UniFi account: `Remote access is disabled` from unifi-core and `Cannot send sdwan-get-last-configs-to-apply HTTP Cloud Event` from the Network application. The SD-WAN task asks unifi-core to reach the cloud, which it cannot without remote access.
+
 ## Why does the container need specific settings for cgroup and tmpfs?
 
 The underlying structure of UniFi OS Server runs every component as systemd services which requires access to the host `cgroup`. The entrypoint prints a `WARNING` in the container logs when one of the tmpfs mounts is missing or mounted `noexec`.
