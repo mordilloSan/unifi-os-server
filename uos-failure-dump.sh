@@ -2,7 +2,10 @@
 # ExecStopPost hook, wired in the Dockerfile for the main services: when a service run ends in
 # failure, copy that run's output from the journal to the console, which is docker logs with
 # tty: true. systemd provides SERVICE_RESULT, EXIT_CODE, EXIT_STATUS and INVOCATION_ID.
-[ "$SERVICE_RESULT" = success ] && exit 0
+# Only when the main process itself ended badly: a stop command that fails during shutdown, as
+# RabbitMQ's does once epmd is gone, also gives SERVICE_RESULT=exit-code and is not worth a dump.
+[ "$EXIT_CODE" = exited ] && [ "$EXIT_STATUS" = 0 ] && exit 0
+[ "$(systemctl is-system-running 2> /dev/null)" = stopping ] && exit 0
 [ -c /dev/console ] || exit 0
 [ -f /etc/default/uos-log ] && . /etc/default/uos-log
 

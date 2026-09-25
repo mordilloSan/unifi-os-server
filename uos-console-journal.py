@@ -60,6 +60,10 @@ def format_entry(entry):
     message = entry.get("MESSAGE", "")
     if isinstance(message, list):  # non UTF-8 payloads arrive as byte arrays
         message = bytes(message).decode(errors="replace")
+    elif message is None:  # journalctl -o json replaces fields over 4 KB with null
+        message = "(message over 4 KB, see journalctl -t " + str(entry.get("SYSLOG_IDENTIFIER", "")) + ")"
+    elif not isinstance(message, str):
+        message = str(message)
     level = PRIORITY_LEVELS.get(entry.get("PRIORITY"), "INFO")
     match = LEVEL_RE.match(message)
     word = (match.group("colon") or match.group("upper")).lower() if match else None
