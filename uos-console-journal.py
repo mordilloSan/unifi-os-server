@@ -3,8 +3,10 @@
 
     2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces
 
-Set UOS_LOG_TIMESTAMP, UOS_LOG_SOURCE or UOS_LOG_COLOR to false to drop a part.
-Only the daemon facility (systemd and unit output) at notice and up: sudo/cron/pam audit lines stay out.
+Set UOS_LOG_TIMESTAMP, UOS_LOG_SOURCE or UOS_LOG_COLOR to false to drop a part. UOS_LOG_LEVEL is the
+lowest journal priority shown, notice by default: warnings, errors and systemd state changes; info
+adds everything the applications log. Only the daemon facility (systemd and unit output) is read, so
+the sudo/cron/pam audit lines stay out.
 Run by uos-console-journal.service.
 """
 import json
@@ -19,6 +21,11 @@ def enabled(name):
 
 
 TIMESTAMP, SOURCE, COLOR = enabled("UOS_LOG_TIMESTAMP"), enabled("UOS_LOG_SOURCE"), enabled("UOS_LOG_COLOR")
+LEVEL = os.environ.get("UOS_LOG_LEVEL", "notice").lower()
+if LEVEL not in ("emerg", "alert", "crit", "err", "warning", "notice", "info", "debug", *"01234567"):
+    LEVEL = "notice"
+# systemd bookkeeping that carries no information for a container
+NOISE_RE = re.compile(r": Consumed [0-9.]+m?s CPU time\.?$")
 
 # Level word at the start of a message, "word:" in any case or an UPPERCASE word:
 # unifi-core "warn: ...", Network app "<thread> WARN  logger - ...", PostgreSQL "[pid] LOG:  ...".
@@ -60,10 +67,13 @@ def format_entry(entry):
 
 def main():
     journal = subprocess.Popen(
-        ["journalctl", "--follow", "--lines=0", "--quiet", "--output=json", "--priority=notice", "SYSLOG_FACILITY=3"],
+        ["journalctl", "--follow", "--lines=0", "--quiet", "--output=json", "--priority=" + LEVEL, "SYSLOG_FACILITY=3"],
         stdout=subprocess.PIPE, text=True)
     for line in journal.stdout:
-        print(format_entry(json.loads(line)), flush=True)
+        entry = json.loads(line)
+        if isinstance(entry.get("MESSAGE"), str) and NOISE_RE.search(entry["MESSAGE"]):
+            continue
+        print(format_entry(entry), flush=True)
 
 
 if __name__ == "__main__":

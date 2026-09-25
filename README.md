@@ -60,6 +60,7 @@ Releases are named after the UniFi OS Server version they ship plus an image rev
 | UOS_SYSTEM_IP | Hostname or IP for UniFi OS Server |
 | HARDWARE_PLATFORM | Manually set hardware platform |
 | UOS_DISCOVERY_CLIENT_URL | Where UniFi OS finds the discovery client. Default `http://127.0.0.1:11002`, the client inside the container; the bridge compose file sets `http://host.docker.internal:11002` for its `discovery` sidecar |
+| UOS_LOG_LEVEL | `docker logs`: lowest journal priority shown. Default `notice`: warnings, errors and systemd state changes. `info` adds everything the applications log |
 | UOS_LOG_TIMESTAMP | `docker logs`: prefix lines with the time (default `true`) |
 | UOS_LOG_SOURCE | `docker logs`: prefix lines with the source, e.g. `unifi-core:` (default `true`) |
 | UOS_LOG_COLOR | `docker logs`: color the `[ WARN ]` level tag (default `true`) |
@@ -194,7 +195,7 @@ The underlying structure of UniFi OS Server runs every component as systemd serv
 
 ## Why is the container unhealthy?
 
-The UniFi OS (`system.log`, `errors.log`), Network application (`server.log`) and PostgreSQL logs are copied into the journal under the identifiers `unifi-core`, `unifi` and `postgres`, so `docker exec unifi-os-server journalctl -f -t unifi` works. With `tty: true` (see [docker-compose.yaml](docker-compose.yaml)) `docker logs` shows the systemd boot status followed by the journal at notice level and up, those application logs plus systemd warnings and errors, as `2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces`. The `UOS_LOG_*` variables switch the time, the source and the colors off. The `logging` section of the compose file caps that at three 10 MB files. When one of the main services exits with an error, the output of that run is copied to `docker logs` right after systemd's `Failed to start` line. The healthcheck reports failed systemd units, whether UniFi OS answers on `/api/ping` and the state of the main services:
+The UniFi OS (`system.log`, `errors.log`), Network application (`server.log`) and PostgreSQL logs are copied into the journal under the identifiers `unifi-core`, `unifi` and `postgres`, so `docker exec unifi-os-server journalctl -f -t unifi` works. With `tty: true` (see [docker-compose.yaml](docker-compose.yaml)) `docker logs` shows the systemd boot status followed by the journal at notice level and up: warnings and errors of those applications plus systemd state changes, as `2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces`. `UOS_LOG_LEVEL=info` adds everything the applications log; the other `UOS_LOG_*` variables switch the time, the source and the colors off. The `logging` section of the compose file caps that at three 10 MB files. When one of the main services exits with an error, the output of that run is copied to `docker logs` right after systemd's `Failed to start` line. The healthcheck reports failed systemd units, whether UniFi OS answers on `/api/ping` and the state of the main services:
 
 ```bash
 docker inspect --format '{{json .State.Health.Log}}' unifi-os-server | jq -r '.[-1].Output'
