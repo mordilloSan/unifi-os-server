@@ -2,7 +2,7 @@
 
 <a href="https://github.com/mordilloSan/unifi-os-server/actions/workflows/build-image.yaml"><img src="https://img.shields.io/github/actions/workflow/status/mordilloSan/unifi-os-server/build-image.yaml?logo=githubactions&logoColor=white&label=Actions"></a>
 
-Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) directly in Docker or Kubernetes.
+Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) directly in Docker.
 
 > The **UniFi OS Server is the new standard for self-hosting UniFi**, replacing the legacy UniFi Network Server. While the Network Server provided basic hosting functionality, it lacked support for key UniFi OS features like Organizations, IdP Integration, or Site Magic SD-WAN. With a fully unified operating system, UniFi OS Server now delivers the same management experience as UniFi-native–including CloudKeys, Cloud Gateways, and Official UniFi Hosting–and is fully compatible with Site Manager for centralized, multi-site control.
 >
@@ -13,32 +13,6 @@ Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) d
 ## Docker Compose
 
 Two complete files, pick one: [docker-compose.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.yaml) gives the container its own address on your LAN (macvlan) plus a bridge network, [docker-compose.host.yaml](https://github.com/mordilloSan/unifi-os-server/blob/main/docker-compose.host.yaml) puts it on the host network. [Networking](#networking) explains the difference.
-
-## Kubernetes
-
-See [kubernetes](https://github.com/mordilloSan/unifi-os-server/tree/main/kubernetes)
-
-Deployment example uses [ingress-nginx](https://github.com/kubernetes/ingress-nginx) for the ingress and [longhorn](https://github.com/longhorn/longhorn) for storage.
-
-Your ingress controller must be modified to accept extra ports. For example, `ingress-nginx` Helm values:
-
-```yaml
-tcp:
-  5005: "unifi/unifi-os-server-rtp-svc:5005" # Optional
-  9543: "unifi/unifi-os-server-id-hub-svc:9543" # Optional
-  6789: "unifi/unifi-os-server-mobile-speedtest-svc:6789" # Optional
-  8080: "unifi/unifi-os-server-communication-svc:8080"
-  8444: "unifi/unifi-os-server-hotspot-secured-svc:8444" # Optional
-  28082: "unifi/unifi-os-server-support-files:28082" # Optional
-  5671: "unifi/unifi-os-server-aqmps-svc:5671" # Optional
-  8880: "unifi/unifi-os-server-hotspot-redirect-0-svc:8880" # Optional
-  8881: "unifi/unifi-os-server-hotspot-redirect-1-svc:8881" # Optional
-  8882: "unifi/unifi-os-server-hotspot-redirect-2-svc:8882" # Optional
-udp:
-  3478: "unifi/unifi-os-server-stun-svc:3478"
-  5514: "unifi/unifi-os-server-syslog-svc:5514" # Optional
-  10003: "unifi/unifi-os-server-discovery-svc:10003"
-```
 
 ## Tags
 
@@ -141,7 +115,7 @@ UniFi OS takes the first interface with an IPv4 address from the list, in alphab
 
 ## What is the difference between images?
 
-The `uosserver` image is UniFi's, extracted from the installation binary. The `unifi-os-server` image adds what Docker and Kubernetes need: the entrypoint fixes the ownership of the volumes and warns about missing tmpfs mounts, UniFi OS reaches the discovery client inside the container, the container has a healthcheck, and the application logs are streamed to `docker logs`.
+The `uosserver` image is UniFi's, extracted from the installation binary. The `unifi-os-server` image adds what Docker needs: the entrypoint fixes the ownership of the volumes and warns about missing tmpfs mounts, UniFi OS reaches the discovery client inside the container, the container has a healthcheck, and the application logs are streamed to `docker logs`.
 
 ## Does automatic device discovery work?
 

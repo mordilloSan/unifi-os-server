@@ -11,8 +11,6 @@ services:
     cap_add:
       - NET_RAW
       - NET_ADMIN
-    extra_hosts:
-      host.docker.internal: host-gateway
     tmpfs:
       - /run:exec
       - /run/lock

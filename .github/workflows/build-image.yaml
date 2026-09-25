@@ -7,7 +7,6 @@ on:
     branches-ignore:
       - main
     paths-ignore:
-      - 'kubernetes/**'
       - '**.md'
       - 'docker-compose.yaml'
       - 'renovate.json'
