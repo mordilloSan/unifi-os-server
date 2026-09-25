@@ -21,6 +21,7 @@ services:
       - /var/opt/unifi/tmp:size=64m
     environment:
       - UOS_SYSTEM_IP=unifi.example.com
+      # - UOS_LOG_LEVEL=info      # docker logs: everything the applications log, not only warnings and errors
       # - UOS_LOG_TIMESTAMP=false # docker logs: drop the time
       # - UOS_LOG_SOURCE=false    # docker logs: drop the source (unifi-core:, unifi:, postgres:, systemd:)
       # - UOS_LOG_COLOR=false     # docker logs: no ANSI colors

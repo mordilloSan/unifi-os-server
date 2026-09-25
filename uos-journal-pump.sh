@@ -1,18 +1,24 @@
 #!/bin/bash
 # Pumps one application log source into the journal, minus its own timestamp and stack frames, so
 # that journalctl and the console show every source in one format. Run by uos-journal-pump@.service.
+# levels: prefix each line with the syslog priority its level word means, <3> error, <4> warning,
+# <6> info, so that journalctl -p and the console stream (notice and up) can filter it. Lines without a
+# level word keep the unit's SyslogLevel, notice.
 case $1 in
     unifi-core)
         files=(/data/unifi-core/logs/system.log /data/unifi-core/logs/errors.log)
         strip='s/^[0-9T:.+-]* - //'
+        levels='s/^error: /<3>&/;s/^warn: /<4>&/;s/^info: /<6>&/;s/^debug: /<7>&/'
         ;;
     unifi)
         files=(/data/unifi/logs/server.log)
         strip='s/^\[[^]]*\] //'
+        levels='s/^<[^>]*> ERROR/<3>&/;s/^<[^>]*> WARN/<4>&/;s/^<[^>]*> INFO/<6>&/;s/^<[^>]*> DEBUG/<7>&/;s/^Caused by:/<3>&/'
         ;;
     postgres)
         files=(/var/log/postgresql/postgresql-14-main.log)
         strip='s/^[0-9-]* [0-9:.]* [A-Z]* //'
+        levels='s/^\[[0-9]*\] \(ERROR\|FATAL\|PANIC\):/<3>&/;s/^\[[0-9]*\] WARNING:/<4>&/;s/^\[[0-9]*\] NOTICE:/<5>&/;s/^\[[0-9]*\] \(LOG\|DETAIL\|HINT\|STATEMENT\|INFO\):/<6>&/'
         ;;
     *)
         echo "unknown log source: $1" >&2
@@ -28,4 +34,5 @@ tail -q -F -n0 "${files[@]}" | sed -u \
     -e '/^[[:space:]]\+at /d' \
     -e '/^[[:space:]]*\.\.\. [0-9]\+ .*\(omitted\|more\)$/d' \
     -e '/^[A-Za-z]*Error:/d' \
-    -e '/^error: [^[]/d'
+    -e '/^error: [^[]/d' \
+    -e "$levels"
