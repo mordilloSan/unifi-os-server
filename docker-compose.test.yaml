@@ -1,0 +1,26 @@
+# Local test override: make test
+# Builds the image from this checkout and mounts the volumes on ./.test-data
+services:
+  unifi-os-server:
+    image: unifi-os-server:test
+    build: .
+    container_name: uos-test
+    networks: !override
+      default: {}
+    hostname: unifi
+    environment:
+      - UOS_SYSTEM_IP=unifi.example.com
+      - UOS_LOG_TIMESTAMP=false
+      - UOS_LOG_SOURCE=false
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - ./.test-data/persistent:/persistent
+      - ./.test-data/var-log:/var/log
+      - ./.test-data/data:/data
+      - ./.test-data/srv:/srv
+      - ./.test-data/var-lib-unifi:/var/lib/unifi
+      - ./.test-data/var-lib-mongodb:/var/lib/mongodb
+      - ./.test-data/etc-rabbitmq-ssl:/etc/rabbitmq/ssl
+
+networks: !override
+  default: {}

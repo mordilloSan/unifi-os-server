@@ -1,0 +1,58 @@
+---
+# UniFi OS Server with its own address on your LAN (macvlan) plus a bridge network for the host and
+# other containers, such as a reverse proxy, to reach it by name. Fill in the three values marked <-.
+# See "Networking" in the README. For the host network instead, use docker-compose.host.yaml.
+services:
+  unifi-os-server:
+    image: ghcr.io/mordillosan/unifi-os-server:latest
+    container_name: unifi-os-server
+    tty: true # systemd boot status ([ OK ] / Failed to start) shows up in docker logs
+    networks:
+      lan:
+        ipv4_address: 192.168.1.67 # <- a free address on your LAN, outside the DHCP pool
+      default: {}
+    cgroup: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    tmpfs:
+      - /run:exec
+      - /run/lock
+      - /tmp:exec
+      - /var/lib/journal
+      - /var/opt/unifi/tmp:size=64m
+    environment:
+      - UOS_SYSTEM_IP=192.168.1.67 # <- the same address: devices send their informs here
+      # - UOS_LOG_LEVEL=info      # docker logs: everything the applications log, not only warnings and errors
+      # - UOS_LOG_TIMESTAMP=false # docker logs: drop the time
+      # - UOS_LOG_SOURCE=false    # docker logs: drop the source (unifi-core:, unifi:, postgres:, systemd:)
+      # - UOS_LOG_COLOR=false     # docker logs: no ANSI colors
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /path/to/unifi-os-server/persistent:/persistent
+      - /path/to/unifi-os-server/var-log:/var/log
+      - /path/to/unifi-os-server/data:/data
+      - /path/to/unifi-os-server/srv:/srv
+      - /path/to/unifi-os-server/var-lib-unifi:/var/lib/unifi
+      - /path/to/unifi-os-server/var-lib-mongodb:/var/lib/mongodb
+      - /path/to/unifi-os-server/etc-rabbitmq-ssl:/etc/rabbitmq/ssl
+    # The LAN reaches the container directly on its address; nothing needs publishing. Uncomment to
+    # also reach the UI through the host's address, https://<host>:11443
+    # ports:
+    #   - 11443:443
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  lan:
+    driver: macvlan
+    driver_opts:
+      parent: eth0 # <- the host interface on your LAN: ip -4 -br addr
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24 # <- your LAN
+          gateway: 192.168.1.1
+  default: {}
