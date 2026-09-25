@@ -7,8 +7,8 @@ export HEALTH_JQ = .[0].State.Health | (if .Status == "healthy" then "[\u001b[32
 .PHONY: lint test clean distclean
 
 lint:
-	shellcheck -S warning uos-entrypoint.sh uos-healthcheck.sh uos-journal-pump.sh
-	shfmt -d uos-entrypoint.sh uos-healthcheck.sh uos-journal-pump.sh
+	shellcheck -S warning uos-entrypoint.sh uos-healthcheck.sh uos-journal-pump.sh uos-failure-dump.sh
+	shfmt -d uos-entrypoint.sh uos-healthcheck.sh uos-journal-pump.sh uos-failure-dump.sh
 	python3 -c "compile(open('uos-console-journal.py').read(), 'uos-console-journal.py', 'exec')"
 	$(COMPOSE) config -q
 
