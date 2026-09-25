@@ -9,6 +9,7 @@ services:
     environment:
       - UOS_SYSTEM_IP=unifi.example.com
       - UOS_LOG_TIMESTAMP=false
+      - UOS_LOG_SOURCE=false
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./.test-data/persistent:/persistent
