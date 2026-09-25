@@ -168,13 +168,21 @@ The `uosserver` image is UniFi's, extracted from the installation binary. The `u
 
 Only when the container is on your LAN, see [Networking](#networking). On the default bridge network, adopt devices with `set-inform` (see `UOS_SYSTEM_IP`), with DHCP option 43, or with a DNS record named `unifi` pointing at the host: devices try `http://unifi:8080/inform` on their own.
 
+## Which errors at startup are normal?
+
+Every boot logs a few errors that come from UniFi's own components and fix themselves:
+
+- `MessageBox: Invalid token` from unifi-core, and `Connection to MessageBox closed` from the Network application. The Network application reconnects with a stale token from the previous boot, is refused, and subscribes again 10 seconds later.
+- `Failed to retrieve anonymous network application ID` from unifi-core, after six retries. An internal call for the diagnostics ID that fails on every boot; nothing waits on it.
+- `Cannot publish s2s-vpn-sites request - sites list is empty` and the two `Application degradation` warnings from the Network application. SD-WAN sites you do not have and hardware monitoring that does not exist in a container.
+
 ## Why does the container need specific settings for cgroup and tmpfs?
 
 The underlying structure of UniFi OS Server runs every component as systemd services which requires access to the host `cgroup`. The entrypoint prints a `WARNING` in the container logs when one of the tmpfs mounts is missing or mounted `noexec`.
 
 ## Why is the container unhealthy?
 
-The UniFi OS (`system.log`, `errors.log`), Network application (`server.log`) and PostgreSQL logs are copied into the journal under the identifiers `unifi-core`, `unifi` and `postgres`, so `docker exec unifi-os-server journalctl -f -t unifi` works. With `tty: true` (see [docker-compose.yaml](docker-compose.yaml)) `docker logs` shows the systemd boot status followed by the journal at notice level and up, those application logs plus systemd warnings and errors, as `2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces`. The `UOS_LOG_*` variables switch the time, the source and the colors off. The `logging` section of the compose file caps that at three 10 MB files. The healthcheck reports failed systemd units, whether UniFi OS answers on `/api/ping` and the state of the main services:
+The UniFi OS (`system.log`, `errors.log`), Network application (`server.log`) and PostgreSQL logs are copied into the journal under the identifiers `unifi-core`, `unifi` and `postgres`, so `docker exec unifi-os-server journalctl -f -t unifi` works. With `tty: true` (see [docker-compose.yaml](docker-compose.yaml)) `docker logs` shows the systemd boot status followed by the journal at notice level and up, those application logs plus systemd warnings and errors, as `2026-09-24T08:15:54 [ WARN ] unifi-core: Failed to fetch network interfaces`. The `UOS_LOG_*` variables switch the time, the source and the colors off. The `logging` section of the compose file caps that at three 10 MB files. When one of the main services exits with an error, the output of that run is copied to `docker logs` right after systemd's `Failed to start` line. The healthcheck reports failed systemd units, whether UniFi OS answers on `/api/ping` and the state of the main services:
 
 ```bash
 docker inspect --format '{{json .State.Health.Log}}' unifi-os-server | jq -r '.[-1].Output'
