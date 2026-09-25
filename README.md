@@ -60,7 +60,7 @@ Releases are named after the UniFi OS Server version they ship plus an image rev
 | UOS_SYSTEM_IP | Hostname or IP for UniFi OS Server |
 | HARDWARE_PLATFORM | Manually set hardware platform |
 | UOS_DISCOVERY_CLIENT_URL | Where UniFi OS finds the discovery client. Default `http://127.0.0.1:11002`, the client inside the container; the bridge compose file sets `http://host.docker.internal:11002` for its `discovery` sidecar |
-| UOS_LOG_LEVEL | `docker logs`: lowest journal priority shown. Default `notice`: warnings, errors and systemd state changes. `info` adds everything the applications log |
+| UOS_LOG_LEVEL | `docker logs`: lowest journal priority shown. Default `notice`: warnings, errors and systemd state changes, minus the known startup noise listed in the FAQ. `info` adds everything the applications log, noise included |
 | UOS_LOG_TIMESTAMP | `docker logs`: prefix lines with the time (default `true`) |
 | UOS_LOG_SOURCE | `docker logs`: prefix lines with the source, e.g. `unifi-core:` (default `true`) |
 | UOS_LOG_COLOR | `docker logs`: color the `[ WARN ]` level tag (default `true`) |
@@ -182,11 +182,12 @@ Yes, with the `discovery` sidecar of [docker-compose.yaml](docker-compose.yaml) 
 
 ## Which errors at startup are normal?
 
-Every boot logs a few errors that come from UniFi's own components and fix themselves:
+Every boot logs a few errors that come from UniFi's own components and fix themselves. The ones marked *hidden* are dropped from `docker logs` by default and shown with `UOS_LOG_LEVEL=info`; the journal and the log files always keep them.
 
-- `MessageBox: Invalid token` from unifi-core, and `Connection to MessageBox closed` from the Network application. The Network application reconnects with a stale token from the previous boot, is refused, and subscribes again 10 seconds later.
-- `Failed to retrieve anonymous network application ID` from unifi-core, after six retries. An internal call for the diagnostics ID that fails on every boot; nothing waits on it.
-- `Cannot publish s2s-vpn-sites request - sites list is empty` and the two `Application degradation` warnings from the Network application. SD-WAN sites you do not have and hardware monitoring that does not exist in a container.
+- *Hidden.* `MessageBox: Invalid token` from unifi-core, and `Connection to MessageBox closed` from the Network application. The Network application reconnects with a stale token from the previous boot, is refused, and subscribes again 10 seconds later.
+- *Hidden.* `Failed to retrieve anonymous network application ID` from unifi-core, after six retries. An internal call for the diagnostics ID that fails on every boot; nothing waits on it.
+- *Hidden.* `Cannot publish s2s-vpn-sites request - sites list is empty`, the `Application degradation` warnings and the `component[...] initialization took` warnings from the Network application. SD-WAN sites you do not have, hardware monitoring that does not exist in a container, and Spring Boot's startup timing.
+- Until the site is set up: `Country Code is not configured` and `Cannot notify listeners on saving 'apgroup' document` from the Network application. They stop once the site has its settings.
 - Until the console is linked to a UniFi account: `Remote access is disabled` from unifi-core and `Cannot send sdwan-get-last-configs-to-apply HTTP Cloud Event` from the Network application. The SD-WAN task asks unifi-core to reach the cloud, which it cannot without remote access.
 
 ## Why does the container need specific settings for cgroup and tmpfs?
