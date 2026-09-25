@@ -153,6 +153,13 @@ if [ -n "${UOS_SYSTEM_IP+1}" ]; then
     fi
 fi
 
+# Where unifi-core finds the discovery client. The image points it at the client inside the
+# container; the bridge compose file points it at the sidecar on the host network (README, Networking).
+if [ -n "${UOS_DISCOVERY_CLIENT_URL:-}" ]; then
+    log INFO "Setting discovery client URL to $UOS_DISCOVERY_CLIENT_URL"
+    sed -i "s|\"discoveryClientUrl\":\"[^\"]*\"|\"discoveryClientUrl\":\"$UOS_DISCOVERY_CLIENT_URL\"|" /etc/default/unifi-core_advanced*
+fi
+
 # systemd needs /run on tmpfs and UniFi needs exec on /run and /tmp; an unprivileged container
 # cannot mount these itself, Docker must (tmpfs section of docker-compose.yaml).
 # With CAP_SYS_ADMIN (privileged) systemd mounts them on its own, so skip the check.
