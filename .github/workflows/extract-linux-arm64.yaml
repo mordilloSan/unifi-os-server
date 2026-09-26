@@ -25,6 +25,8 @@ env:
 
 jobs:
   extract-image:
+    permissions:
+      packages: write
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 10
     outputs:

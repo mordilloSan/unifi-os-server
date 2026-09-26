@@ -7,6 +7,9 @@ on:
 
 jobs:
   release-check:
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -83,6 +86,8 @@ jobs:
           fi
         
   extract-linux-amd64:
+    permissions:
+      packages: write
     needs: release-check
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
     uses: ./.github/workflows/extract-linux-amd64.yaml
@@ -90,6 +95,8 @@ jobs:
       UOS_DOWNLOAD: ${{ needs.release-check.outputs.UOS_DOWNLOAD_AMD64 }}
 
   extract-linux-arm64:
+    permissions:
+      packages: write
     needs: release-check
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
     uses: ./.github/workflows/extract-linux-arm64.yaml
@@ -97,6 +104,8 @@ jobs:
       UOS_DOWNLOAD: ${{ needs.release-check.outputs.UOS_DOWNLOAD_ARM64 }}
 
   build-uosserver:
+    permissions:
+      packages: write
     needs: [release-check, extract-linux-amd64, extract-linux-arm64]
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
     uses: ./.github/workflows/build-uosserver.yaml
@@ -104,6 +113,9 @@ jobs:
       tag: ${{ needs.extract-linux-amd64.outputs.PODMAN_IMAGE_TAG }}
 
   create-pr:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-24.04
     needs: [release-check, extract-linux-amd64, extract-linux-arm64, build-uosserver]
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
