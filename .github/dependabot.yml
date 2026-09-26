@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # only propose versions that are at least a week old
+    groups:
+      actions:
+        patterns: ["*"] # one PR with every bump instead of one per action
