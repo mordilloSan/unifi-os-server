@@ -146,3 +146,9 @@ docker inspect --format '{{json .State.Health.Log}}' unifi-os-server | jq -r '.[
 ## The services fail with permission errors on my volumes
 
 The entrypoint fixes the ownership of the MongoDB, PostgreSQL, RabbitMQ and UniFi agent directories on every start and logs what it changed, so restart the container and check `docker logs`.
+
+# License
+
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE). It is based on [lemker/unifi-os-server](https://github.com/lemker/unifi-os-server) and has been modified by Miguel Mariz since September 2026; the commit history lists every change. Modifications copyright (C) 2026 Miguel Mariz.
+
+UniFi OS Server itself is proprietary software owned by Ubiquiti Inc. and is subject to its own license terms.
