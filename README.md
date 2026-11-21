@@ -1,6 +1,6 @@
 # UniFi OS Server
 
-<a href="https://github.com/mordilloSan/unifi-os-server/actions/workflows/build-image.yaml"><img src="https://img.shields.io/github/actions/workflow/status/mordilloSan/unifi-os-server/build-image.yaml?logo=githubactions&logoColor=white&label=Actions"></a>
+<a href="https://github.com/mordilloSan/unifi-os-server/actions/workflows/build-image.yml"><img src="https://img.shields.io/github/actions/workflow/status/mordilloSan/unifi-os-server/build-image.yml?logo=githubactions&logoColor=white&label=Actions"></a>
 
 Run [UniFi OS Server](https://blog.ui.com/article/introducing-unifi-os-server) directly in Docker.
 
