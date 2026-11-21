@@ -102,7 +102,7 @@ jobs:
       packages: write
     needs: release-check
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
-    uses: ./.github/workflows/extract-linux-amd64.yaml
+    uses: ./.github/workflows/extract-linux-amd64.yml
     with:
       UOS_DOWNLOAD: ${{ needs.release-check.outputs.UOS_DOWNLOAD_AMD64 }}
 
@@ -111,7 +111,7 @@ jobs:
       packages: write
     needs: release-check
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
-    uses: ./.github/workflows/extract-linux-arm64.yaml
+    uses: ./.github/workflows/extract-linux-arm64.yml
     with:
       UOS_DOWNLOAD: ${{ needs.release-check.outputs.UOS_DOWNLOAD_ARM64 }}
 
@@ -120,7 +120,7 @@ jobs:
       packages: write
     needs: [release-check, extract-linux-amd64, extract-linux-arm64]
     if: "${{ needs.release-check.outputs.RELEASED == 'false' }}"
-    uses: ./.github/workflows/build-uosserver.yaml
+    uses: ./.github/workflows/build-uosserver.yml
     with:
       tag: ${{ needs.extract-linux-amd64.outputs.PODMAN_IMAGE_TAG }}
 
