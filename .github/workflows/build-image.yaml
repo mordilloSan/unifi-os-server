@@ -15,16 +15,24 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: mordillosan/unifi-os-server
 
+# Pushes to a branch queue behind each other and never cancel; each release tag
+# is a ref of its own, so nothing else can displace a release build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     permissions:
       contents: read
       packages: write
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
