@@ -5,13 +5,19 @@ on:
   schedule:
     - cron: "27 * * * *"
 
+# Hourly polls queue one at a time and never cancel a run that may be pushing
+# images or opening the pull request; a newer poll may replace a waiting one.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release-check:
     permissions:
       contents: read
       pull-requests: read
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       UOS_VERSION: ${{ steps.version.outputs.UOS_VERSION }}
       UOS_DOWNLOAD_AMD64: ${{ steps.version.outputs.UOS_DOWNLOAD_AMD64 }}
@@ -45,14 +51,18 @@ jobs:
           fi
           
           # Export to env
-          echo "UOS_VERSION=$UOS_VERSION" >> "$GITHUB_ENV"
-          echo "UOS_DOWNLOAD_AMD64=$UOS_DOWNLOAD_AMD64" >> "$GITHUB_ENV"
-          echo "UOS_DOWNLOAD_ARM64=$UOS_DOWNLOAD_ARM64" >> "$GITHUB_ENV"
+          {
+            echo "UOS_VERSION=$UOS_VERSION"
+            echo "UOS_DOWNLOAD_AMD64=$UOS_DOWNLOAD_AMD64"
+            echo "UOS_DOWNLOAD_ARM64=$UOS_DOWNLOAD_ARM64"
+          } >> "$GITHUB_ENV"
 
           # Export to outputs
-          echo "UOS_VERSION=$UOS_VERSION" >> $GITHUB_OUTPUT
-          echo "UOS_DOWNLOAD_AMD64=$UOS_DOWNLOAD_AMD64" >> $GITHUB_OUTPUT
-          echo "UOS_DOWNLOAD_ARM64=$UOS_DOWNLOAD_ARM64" >> $GITHUB_OUTPUT
+          {
+            echo "UOS_VERSION=$UOS_VERSION"
+            echo "UOS_DOWNLOAD_AMD64=$UOS_DOWNLOAD_AMD64"
+            echo "UOS_DOWNLOAD_ARM64=$UOS_DOWNLOAD_ARM64"
+          } >> "$GITHUB_OUTPUT"
 
           # Print variables
           echo "UOS_VERSION=$UOS_VERSION"
@@ -61,6 +71,8 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check if version is already handled
         id: release
@@ -128,6 +140,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Update Dockerfile
         run: |
